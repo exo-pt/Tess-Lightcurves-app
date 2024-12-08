@@ -1,7 +1,8 @@
 # TESS Lightcurves app
 
-Tess lightcurve viewer for all available sectors of a target in TIC catalog<br/>
-This is a small webapp currently hosted in Streamlit Community Cloud.
+Tess lightcurve viewer for all available sectors of a target in TIC catalog<br/><br/>
+This is a small webapp currently hosted in Streamlit Cloud. You can access it at<br>
+https://tess-lightcurves.streamlit.app
 
 For a selected TIC number, one lightcurve is displayed for each available sector.
 If  more than one author available for a sector, the displayed lightcurve, in availability order, is:
