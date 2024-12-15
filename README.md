@@ -5,7 +5,8 @@ This is a small webapp currently hosted in Streamlit Cloud. You can access it at
 https://tess-lightcurves.streamlit.app
 <br/>
 or start the webapp locally in a Python env:
-> streamlit run Tess_Lightcurves.py
+` streamlit run Tess_Lightcurves.py `
+<br/>
 The app will open in the default browser
 
 For a selected TIC number, the lightcurve of each sector available on MAST, is displayed.
