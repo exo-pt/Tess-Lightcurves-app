@@ -110,8 +110,6 @@ if __name__ == '__main__':
         cat['ra'] = cat['ra'].round(5)
         cat['dec'] = cat['dec'].round(5)
         cat['Tmag'] = cat['Tmag'].round(2)
-        #cat['priority'] = cat['priority'].round(4)
-        #cat['contratio'] = cat['contratio'].round(4)
         cat['d'] = cat['d'].round(2)
         cat['logg'] = cat['logg'].round(3)
         rho = round(cat['rho'][0]*1.41, 3)
@@ -134,16 +132,12 @@ if __name__ == '__main__':
             st.stop()
 
         df = res.table.to_pandas()
-        sectors = df['sequence_number'].drop_duplicates().sort_values().to_list()
-
+        authors = ['SPOC', 'TESS-SPOC', 'QLP', 'GSFC-ELEANOR-LITE']
+        sectors = df[df['provenance_name'].isin(authors)]['sequence_number'].drop_duplicates().sort_values().to_list()
         sec_spoc = df[df['provenance_name'] == 'TESS-SPOC']['sequence_number'].drop_duplicates().sort_values().to_list()
         sec_2min = df[df['provenance_name'] == 'SPOC']['sequence_number'].drop_duplicates().sort_values().to_list()
         sec_qlp = df[df['provenance_name'] == 'QLP']['sequence_number'].drop_duplicates().sort_values().to_list()
-        sec_eleanor = df[df['provenance_name'].str.contains("ELEANOR")]['sequence_number'].drop_duplicates().sort_values().to_list()
-
-        sec_spoc = df[df['provenance_name'] == 'TESS-SPOC']['sequence_number'].drop_duplicates().sort_values().to_list()
-        sec_2min = df[df['exptime'] == 120]['sequence_number'].drop_duplicates().sort_values().to_list()
-        sec_qlp = df[df['provenance_name'] == 'QLP']['sequence_number'].drop_duplicates().sort_values().to_list()
+        sec_eleanor = df[df['provenance_name'] == 'GSFC-ELEANOR-LITE']['sequence_number'].drop_duplicates().sort_values().to_list()
 
         txt = '**Available Sectors: ' + str(sectors) + '**'
         with st.expander(txt):
