@@ -160,7 +160,7 @@ if __name__ == '__main__':
                 '<tr><td>QLP: </td><td>'+ str(sec_qlp) + '</td></tr>' +\
                 '<tr><td>ELEANOR: </td><td>'+ str(sec_eleanor) + '</td></tr></table>'
             st.html(table)
-        maxlen = 10
+        maxlen = 8
         revsectors = sectors.reverse()
         groups = [sectors[x:x+maxlen] for x in range(0, len(sectors), maxlen)] #[::-1]
         oplist = []
