@@ -22,7 +22,7 @@ def set_css():
                 color: navy;
             }
             div[data-testid="stExpander"] details summary p{
-                font-size: 1.1rem;
+                font-size: 1rem;
             }
             div[data-testid="stExpander"] summary{
                 padding: 0.15rem 0.5rem;
@@ -59,6 +59,20 @@ def set_css():
         </style>
         """, unsafe_allow_html=True)
 
+def plot(df):
+    fig = px.scatter(df, x='time', y='flux', color_discrete_sequence=['darkslategrey']) #, render_mode="SVG")
+    fig.update_traces(marker={'size': 3.3})
+    minx = min(df['time']) - 0.7
+    maxx = max(df['time']) + 0.7
+    fig.update_xaxes(range=[minx-0.05, maxx+0.05])
+    fig.add_vrect(x0=minx, x1=maxx, line_width=0.5)
+    fig.update_layout(title=dict(text=tit, y=0.9, font=dict(size=17, color='grey')))
+    fig.update_layout(yaxis = dict(tickfont = dict(size=13), tickformat = '.4f'), xaxis = dict(tickfont = dict(size=13)))
+    fig.update_layout(yaxis_title=None, xaxis_title=None)
+    fig.update_xaxes(showgrid=True, gridcolor='#ddd',title_standoff = 1, minor=dict(ticklen=4, tickcolor="grey", nticks=5))
+    fig.update_yaxes(showgrid=True, gridcolor='#ddd')
+    fig.update_layout(height=285)
+    st.plotly_chart(fig, use_container_width=False)
 
 if __name__ == '__main__':
     st.set_page_config(page_title="Tess Lightcurves app", layout="wide")
@@ -145,17 +159,31 @@ if __name__ == '__main__':
                 '<tr><td>TESS-SPOC: </td><td>'+ str(sec_spoc) + '</td></tr>' +\
                 '<tr><td>QLP: </td><td>'+ str(sec_qlp) + '</td></tr>' +\
                 '<tr><td>ELEANOR: </td><td>'+ str(sec_eleanor) + '</td></tr></table>'
-            #txt = 'SPOC: <b>' + str(sec_2min) + '</b><br>TESS-SPOC: <b>' + str(sec_spoc) + '</b>'
-            #txt = txt + '<br>QLP: <b>' + str(sec_qlp) + '</b><br>ELEANOR: <b>' + str(sec_eleanor)
             st.html(table)
+        maxlen = 10
+        revsectors = sectors.reverse()
+        groups = [sectors[x:x+maxlen] for x in range(0, len(sectors), maxlen)] #[::-1]
+        oplist = []
+        if len(groups) > 1:
+            p = 0
+            for gr in groups:
+                p += 1
+                oplist.append('Page '+ str(p) +'   (sectors '+str(gr[::-1])[1:-1]+')')
+            idx = 0
+            option = st.selectbox(
+                ".",
+                oplist, idx,
+                label_visibility="collapsed",
+            )
+            secs = groups[oplist.index(option)]
+        else:
+            secs = groups[0]
         st.html('&nbsp;')
+
         warnings.simplefilter("ignore")
         logging.getLogger("lightkurve").setLevel(logging.ERROR)
-        sectors.reverse()
-        tot = 0
 
-        for sec in sectors:
-            tot += 1
+        for sec in secs:
             try:
                 if sec in sec_2min:
                     tit = 'Sector ' + str(sec) + ' (SPOC)'
@@ -183,16 +211,4 @@ if __name__ == '__main__':
 
             df = lc0.to_pandas().reset_index()
             df = df[['time', 'flux']]
-            fig = px.scatter(df, x='time', y='flux', color_discrete_sequence=['darkslategrey'])
-            fig.update_traces(marker={'size': 3.3})
-            minx = min(df['time']) - 0.7
-            maxx = max(df['time']) + 0.7
-            fig.update_xaxes(range=[minx-0.05, maxx+0.05])
-            fig.add_vrect(x0=minx, x1=maxx, line_width=0.5)
-            fig.update_layout(title=dict(text=tit, y=0.9, font=dict(size=17, color='grey')))
-            fig.update_layout(yaxis = dict(tickfont = dict(size=13), tickformat = '.4f'), xaxis = dict(tickfont = dict(size=13)))
-            fig.update_layout(yaxis_title=None, xaxis_title=None)
-            fig.update_xaxes(showgrid=True, gridcolor='#ddd',title_standoff = 1, minor=dict(ticklen=4, tickcolor="grey", nticks=5))
-            fig.update_yaxes(showgrid=True, gridcolor='#ddd')
-            fig.update_layout(height=285)
-            st.plotly_chart(fig, use_container_width=False)
+            plot(df)
