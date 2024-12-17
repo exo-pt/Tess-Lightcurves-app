@@ -168,7 +168,7 @@ if __name__ == '__main__':
             p = 0
             for gr in groups:
                 p += 1
-                oplist.append('Page '+ str(p) +'   (sectors '+str(gr[::-1])[1:-1]+')')
+                oplist.append('Page '+ str(p) +'  (sectors '+str(gr[::-1])[1:-1]+')')
             idx = 0
             option = st.selectbox(
                 ".",
