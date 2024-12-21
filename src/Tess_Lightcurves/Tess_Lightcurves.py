@@ -116,7 +116,7 @@ def get_catalog(TICstr):
         linha = 'Error getting star data.'
     return linha
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(ttl='1h', show_spinner=False)
 def get_search_result(TICstr):
     ph2 = st.empty()
     with ph2:
@@ -190,6 +190,10 @@ if __name__ == '__main__':
         df = res.table.to_pandas()
         authors = ['SPOC', 'TESS-SPOC', 'QLP', 'GSFC-ELEANOR-LITE']
         sectors = df[df['provenance_name'].isin(authors)]['sequence_number'].drop_duplicates().sort_values().to_list()
+        if sectors == []:
+            get_search_result.clear(TICstr)
+            st.error('No available lightcurve data at MAST from SPOC, TESS_SPOC, QLP or ELEANOR.')
+            st.stop()
         sec_spoc = df[df['provenance_name'] == 'TESS-SPOC']['sequence_number'].drop_duplicates().sort_values().to_list()
         sec_2min = df[df['provenance_name'] == 'SPOC']['sequence_number'].drop_duplicates().sort_values().to_list()
         sec_qlp = df[df['provenance_name'] == 'QLP']['sequence_number'].drop_duplicates().sort_values().to_list()
@@ -220,6 +224,7 @@ if __name__ == '__main__':
             secs = groups[oplist.index(option)]
         else:
             secs = groups[0]
+
         st.html('<div class="vspc">&nbsp;</div>')
         warnings.simplefilter("ignore")
         logging.getLogger("lightkurve").setLevel(logging.ERROR)
