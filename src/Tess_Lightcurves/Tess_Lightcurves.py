@@ -17,6 +17,10 @@ def set_css():
                 font-size: 13px;
                 padding-bottom: 0.2rem;
             }
+            .vspc{
+                font-size: 13px;
+                padding-bottom: 1rem;
+            }
             .stFormSubmitButton button{
                 float:right;
                 color: navy;
@@ -53,6 +57,9 @@ def set_css():
             div[data-testid="stVerticalBlock"]{
                 gap: 0rem;
             }
+            [class^='_link_'], [class^='_profilePreview_']{
+                display:None !important;
+            }
             h1{
                 padding-bottom: 0.3rem;
             }
@@ -62,17 +69,75 @@ def set_css():
 def plot(df):
     fig = px.scatter(df, x='time', y='flux', color_discrete_sequence=['darkslategrey']) #, render_mode="SVG")
     fig.update_traces(marker={'size': 3.3})
+    fig.update_layout(yaxis = dict(fixedrange = True))
     minx = min(df['time']) - 0.7
     maxx = max(df['time']) + 0.7
     fig.update_xaxes(range=[minx-0.05, maxx+0.05])
-    fig.add_vrect(x0=minx, x1=maxx, line_width=0.5)
-    fig.update_layout(title=dict(text=tit, y=0.9, font=dict(size=17, color='grey')))
+    fig.update_xaxes(showline=True,
+         linewidth=0.5,
+         linecolor='black',
+         mirror=True)
+
+    fig.update_yaxes(showline=True,
+         linewidth=0.5,
+         linecolor='black',
+         mirror=True)
+    fig.update_layout(plot_bgcolor='white')
+    fig.update_layout(margin=dict(l=60, r=10, t=30, b=80))
+
+    fig.update_layout(title=dict(text=tit, x=0, y=0.98, font=dict(size=17, color='black')))
     fig.update_layout(yaxis = dict(tickfont = dict(size=13), tickformat = '.4f'), xaxis = dict(tickfont = dict(size=13)))
     fig.update_layout(yaxis_title=None, xaxis_title=None)
     fig.update_xaxes(showgrid=True, gridcolor='#ddd',title_standoff = 1, minor=dict(ticklen=4, tickcolor="grey", nticks=5))
     fig.update_yaxes(showgrid=True, gridcolor='#ddd')
-    fig.update_layout(height=285)
-    st.plotly_chart(fig, use_container_width=False)
+    fig.update_layout(height=250)
+    st.plotly_chart(fig, use_container_width=True, theme=None)
+
+@st.cache_data(show_spinner=False)
+def get_catalog(TICstr):
+    cat=[]
+    res=''
+    try:
+        cat = Catalogs.query_object(TICstr, radius=0.0003, catalog="TIC")
+        cat['rad'] = cat['rad'].round(3)
+        cat['ra'] = cat['ra'].round(5)
+        cat['dec'] = cat['dec'].round(5)
+        cat['Tmag'] = cat['Tmag'].round(2)
+        cat['d'] = cat['d'].round(2)
+        cat['logg'] = cat['logg'].round(3)
+        rho = round(cat['rho'][0]*1.41, 3)
+
+        linha = '&nbsp;<b>RA</b>: ' + str(cat['ra'][0]) + '  .  <b>Dec</b>:' + str(cat['dec'][0]) + '  .  <b>Tmag</b>: ' + str(cat['Tmag'][0]) +'  .  <b>Rad</b>: ' + str(cat['rad'][0]) +  \
+            '  .  <b>Mass</b>: ' + str(cat['mass'][0]) + '  .  <b>Teff</b>: ' + str(cat['Teff'][0]) + '  .  <b>Logg</b>: '+ str(cat['logg'][0]) + '  .  <b>MH</b>: '+ str(cat['MH'][0])+'  .  <b>rho</b>: ' + \
+            str(round(rho,5)) +  '  .  <b>Dist</b>(pc): ' +str(cat['d'][0])+'<br/>'
+        linha = linha.replace('nan', '?')
+        linha = linha.replace(' . ', '&nbsp;&nbsp;&nbsp;')
+    except:
+        linha = 'Error getting star data.'
+    return linha
+
+@st.cache_data(show_spinner=False)
+def get_search_result(TICstr):
+    ph2 = st.empty()
+    with ph2:
+        st.html('<div class="spc"><i>Retrieving available sectors...</i></div>')
+        try:
+            res=lk.search_lightcurve(TICstr, mission='TESS')
+        except:
+            res = ''
+    ph2.empty()
+    return res
+
+@st.fragment()
+def get_star_params():
+    ph = st.empty()
+    with ph:
+        #if st.button('Star parameters'):
+        st.html('<div class="spc"><i>Retrieving star data...</i></div>')
+        linha = get_catalog(TICstr)
+        if linha[:5] == 'Error':
+            get_catalog.clear(TICstr)
+        st.html('<div class="spc">' + linha +'</div>')
 
 if __name__ == '__main__':
     st.set_page_config(page_title="Tess Lightcurves app", layout="wide")
@@ -84,7 +149,7 @@ if __name__ == '__main__':
 
     ticid = 0
     with st.sidebar:
-        st.title('**TESS Lightcurves**')
+        st.title('**TESS Lightcurves**', anchor=False)
         st.html('&nbsp;')
         with st.form("my_form"):
             tic = st.text_input('**TIC number:**', value=xticid, placeholder='', max_chars=10)
@@ -100,45 +165,22 @@ if __name__ == '__main__':
             )
             st.html('<div class="credits">&nbsp;</div>')
             st.form_submit_button('**PLOT**')
-        #st.html('&nbsp;')
         st.html('<div align="right">v'+__version__+'</div>')
         st.markdown('<div class="credits">Github source code: <a href="https://github.com/exo-pt/Tess-Lightcurves-app">Tess Lightcurves</a><br>Using <a href="https://github.com/lightkurve/lightkurve">Lightkurve</a>' +\
                 ' and <a href="https://github.com/plotly/plotly.py">Plotly</a> Python packages.</div>', unsafe_allow_html=True)
 
     if ticid != 0:
         TICstr = 'TIC '+ str(ticid)
-        st.title(TICstr)
-        st.html("<style>[data-testid='stHeaderActionElements'] {display: none;}</style>")
+        st.title(TICstr, anchor=False)
         cat=[]
         res=''
-        try:
-            cat = Catalogs.query_object(TICstr, radius=0.0003, catalog="TIC")
-        except:
-            try:
-                cat = Catalogs.query_object(TICstr, radius=0.0003, catalog="TIC")
-            except:
-                st.error('Could not resolve '+ TICstr)
-                st.stop()
-
-        cat['rad'] = cat['rad'].round(3)
-        cat['ra'] = cat['ra'].round(5)
-        cat['dec'] = cat['dec'].round(5)
-        cat['Tmag'] = cat['Tmag'].round(2)
-        cat['d'] = cat['d'].round(2)
-        cat['logg'] = cat['logg'].round(3)
-        rho = round(cat['rho'][0]*1.41, 3)
-
-        linha = '&nbsp;<b>RA</b>: ' + str(cat['ra'][0]) + '  .  <b>Dec</b>:' + str(cat['dec'][0]) + '  .  <b>Tmag</b>: ' + str(cat['Tmag'][0]) +'  .  <b>Rad</b>: ' + str(cat['rad'][0]) +  \
-            '  .  <b>Mass</b>: ' + str(cat['mass'][0]) + '  .  <b>Teff</b>: ' + str(cat['Teff'][0]) + '  .  <b>Logg</b>: '+ str(cat['logg'][0]) + '  .  <b>MH</b>: '+ str(cat['MH'][0])+'  .  <b>rho</b>: ' + \
-            str(round(rho,5)) +  '  .  <b>Dist</b>(pc): ' +str(cat['d'][0])+'<br/>'
-        linha = linha.replace('nan', '?')
-        linha = linha.replace(' . ', '&nbsp;&nbsp;&nbsp;')
-        st.html('<div class="spc">' + linha +'</div>')
-        try:
-            res=lk.search_lightcurve(TICstr, mission='TESS')
-        except:
-            res = ''
+        #
+        get_star_params()
+        #
+        res = get_search_result(TICstr)
+        #
         if len(res) == 0:
+            get_search_result.clear(TICstr)
             if res=='':
                 st.error('Error in lk.search_lightcurve... Try again.')
             else:
@@ -168,7 +210,7 @@ if __name__ == '__main__':
             p = 0
             for gr in groups:
                 p += 1
-                oplist.append('Page '+ str(p) +'  (sectors '+str(gr[::-1])[1:-1]+')')
+                oplist.append('Page '+ str(p) +' (sectors '+str(gr[::-1])[1:-1]+')')
             idx = 0
             option = st.selectbox(
                 ".",
@@ -178,8 +220,7 @@ if __name__ == '__main__':
             secs = groups[oplist.index(option)]
         else:
             secs = groups[0]
-        st.html('&nbsp;')
-
+        st.html('<div class="vspc">&nbsp;</div>')
         warnings.simplefilter("ignore")
         logging.getLogger("lightkurve").setLevel(logging.ERROR)
 
@@ -188,9 +229,9 @@ if __name__ == '__main__':
                 if sec in sec_2min:
                     tit = 'Sector ' + str(sec) + ' (SPOC)'
                     if tipo == 'SAP flux':
-                        lc0 = lk.search_lightcurve(TICstr, sector=sec, mission='TESS', author='SPOC', exptime='120').download(flux_column='sap_flux').remove_outliers(sigma_lower=20, sigma_upper=3).normalize().remove_nans()
+                        lc0 = lk.search_lightcurve(TICstr, sector=sec, mission='TESS', author='SPOC', exptime=120).download(flux_column='sap_flux').remove_outliers(sigma_lower=20, sigma_upper=3).normalize().remove_nans()
                     else:
-                        lc0 = lk.search_lightcurve(TICstr, sector=sec, mission='TESS', author='SPOC', exptime='120').download().remove_outliers(sigma_lower=20, sigma_upper=3).normalize().remove_nans()
+                        lc0 = lk.search_lightcurve(TICstr, sector=sec, mission='TESS', author='SPOC', exptime=120).download().remove_outliers(sigma_lower=20, sigma_upper=3).normalize().remove_nans()
                 elif sec in sec_spoc:
                     tit = 'Sector ' + str(sec) + ' (TESS-SPOC)'
                     if tipo == 'SAP flux':
@@ -206,7 +247,7 @@ if __name__ == '__main__':
                 else:
                     continue
             except:
-                st.write(':red[Error] reading '+ tit + '(try again...)')
+                st.write(':red[Error] reading '+ tit)
                 continue
 
             df = lc0.to_pandas().reset_index()
