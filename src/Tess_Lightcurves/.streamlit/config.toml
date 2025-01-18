@@ -1,0 +1,10 @@
+[global]
+disableWidgetStateDuplicationWarning = true
+showWarningOnDirectExecution = false
+
+[client]
+showErrorDetails = false
+toolbarMode = "minimal"
+
+[logger]
+level = "error"
