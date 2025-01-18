@@ -196,7 +196,9 @@ def get_line(TICstr):
 
 @st.cache_resource(ttl='1d')
 def load_mdumps():
-	if 'mdumps' not in st.session_state:
+	if 'mdumps' in st.session_state:
+		mdumps = st.session_state.mdumps
+	else:
 		try:
 			df = pd.read_csv('https://tess.mit.edu/public/files/Table_of_momentum_dumps.csv', comment='#')
 			last_mdump = df.iloc[-1,0][:16]
