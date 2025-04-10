@@ -78,6 +78,9 @@ def set_css():
 				padding-top: 0;
 				padding-bottom: 1.4rem;
 			}
+			.js-plotly-plot .plotly a {
+				text-decoration: underline;
+			}            
 		</style>
 		""", unsafe_allow_html=True)
 
@@ -93,7 +96,7 @@ def get_splash_text(mom_date):
 		""".format(mdate=mom_date)
 	return html
 
-def plot(df, dumps):
+def plot(df, dumps, tit):
 	fig = px.scatter(df, x='time', y='flux', color_discrete_sequence=['darkslategrey']) #, render_mode="SVG")
 	fig.update_traces(marker={'size': 3.3})
 	fig.update_layout(yaxis = dict(fixedrange = True))
@@ -131,7 +134,7 @@ def plot(df, dumps):
 	fig.update_layout(height=240)
 	st.plotly_chart(fig, use_container_width=True, theme=None)
 
-@st.cache_data(max_entries=200, show_spinner=False)
+@st.cache_data(max_entries=150, show_spinner=False)
 def get_catalog(TICstr):
 	cat=[]
 	res=''
@@ -278,7 +281,6 @@ if __name__ == '__main__':
 			st.html('<hr>')
 	else:
 		splash.empty()
-		#if ticid != 0:
 		TICstr = 'TIC '+ str(ticid)
 		st.title(TICstr, anchor=False)
 		cat=[]
@@ -360,7 +362,8 @@ if __name__ == '__main__':
 			idx = d[sec][0]
 			err = False
 			try:
-				tit = 'Sector ' + str(sec) + ' (' + sauth +')'
+				vetting_href = f'  <a href="https://transit-vetting.streamlit.app/?tic={ticid}&sec={sec}">vetting</a>'
+				tit = 'Sector ' + str(sec) + ' (' + sauth +')' + vetting_href
 				match sauth:
 					case 'SPOC' | 'TESS-SPOC':
 						if tipo == 'SAP flux':
@@ -372,7 +375,7 @@ if __name__ == '__main__':
 					case _:
 						lc0 = res[idx].download(quality_bitmask=1073749231).remove_outliers(sigma_lower=20, sigma_upper=3).normalize().remove_nans()
 			except:
-				st.write(':red[Error] reading '+ tit)
+				st.write(':red[Error] reading Sector ' + str(sec) + ' (' + sauth + ')')
 				continue
 
 			df = lc0.to_pandas().reset_index()
@@ -382,7 +385,7 @@ if __name__ == '__main__':
 			del lc0
 			x = np.where(np.logical_and(mdumps>ini, mdumps<fim))
 			dumps= mdumps[x].tolist()
-			plot(df, dumps)
+			plot(df, dumps, tit)
 			check_mp()
 
 		exit_mp()
