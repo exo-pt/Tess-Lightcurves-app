@@ -28,6 +28,11 @@ def set_css():
 				font-size: 13px;
 				padding-bottom: 1rem;
 			}
+            .vspc2{
+                font-size: 13px;
+                text-align: center;
+                padding-bottom: 1.4rem;
+            }
 			.stFormSubmitButton button{
 				float:right;
 				color: navy;
@@ -79,7 +84,15 @@ def set_css():
 				padding-bottom: 1.4rem;
 			}
 			.js-plotly-plot .plotly a {
-				text-decoration: underline;
+				font-size: 1.1rem;
+				font-weight: 400;
+			}
+			.js-plotly-plot .plotly a:hover {
+				font-size: 1.1rem;
+				color: red;
+			}
+			.js-plotly-plot .plotly svg a {
+				fill: #000;
 			}            
 		</style>
 		""", unsafe_allow_html=True)
@@ -348,7 +361,7 @@ if __name__ == '__main__':
 		else:
 			secs = groups[0]
 
-		st.html('<div class="vspc">&nbsp;</div>')
+		st.html('<div class="vspc2"><i>(click a sector\'s title below, to launch transit-vetting for that sector)</i></div>')
 
 		warnings.simplefilter("ignore")
 		logging.getLogger("lightkurve").setLevel(logging.ERROR)
@@ -362,8 +375,8 @@ if __name__ == '__main__':
 			idx = d[sec][0]
 			err = False
 			try:
-				vetting_href = f'  <a href="https://transit-vetting.streamlit.app/?tic={ticid}&sec={sec}">vetting</a>'
-				tit = 'Sector ' + str(sec) + ' (' + sauth +')' + vetting_href
+				tit0 = 'Sector ' + str(sec) + ' (' + sauth +')'
+				tit = f'  <a href="https://transit-vetting.streamlit.app/?tic={ticid}&sec={sec}">' + tit0 + '</a>'
 				match sauth:
 					case 'SPOC' | 'TESS-SPOC':
 						if tipo == 'SAP flux':
@@ -375,7 +388,7 @@ if __name__ == '__main__':
 					case _:
 						lc0 = res[idx].download(quality_bitmask=1073749231).remove_outliers(sigma_lower=20, sigma_upper=3).normalize().remove_nans()
 			except:
-				st.write(':red[Error] reading Sector ' + str(sec) + ' (' + sauth + ')')
+				st.write(':red[Error] reading ' + tit0)
 				continue
 
 			df = lc0.to_pandas().reset_index()
