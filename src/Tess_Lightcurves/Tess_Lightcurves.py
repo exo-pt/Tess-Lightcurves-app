@@ -388,10 +388,15 @@ if __name__ == '__main__':
 					case _:
 						lc0 = res[idx].download(quality_bitmask=1073749231).remove_outliers(sigma_lower=20, sigma_upper=3).normalize().remove_nans()
 			except:
-				st.write(':red[Error] reading ' + tit0)
-				continue
-
-			df = lc0.to_pandas().reset_index()
+				st.write(tit0 + ' - :red[Error]')
+				st.write('.')
+				continue  
+			try:
+			    df = lc0.to_pandas().reset_index()
+			except:
+				st.write(tit0 + ' - :red[Error]')
+				st.write('.')
+				continue              
 			df = df[['time', 'flux']]
 			ini = min(lc0.time.value)
 			fim = max(lc0.time.value)
