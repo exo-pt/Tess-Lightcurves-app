@@ -3,4 +3,4 @@ pandas
 lightkurve
 plotly
 astroquery
-streamlit
+streamlit==1.50.0
