@@ -376,10 +376,10 @@ if __name__ == '__main__':
 			err = False
 			try:
 				tit0 = 'Sector ' + str(sec) + ' (' + sauth +')'
-				tit = f'  <a href="https://transit-vetting.streamlit.app/?tic={ticid}&sec={sec}">' + tit0 + '</a>'
 				match sauth:
 					case 'SPOC' | 'TESS-SPOC':
 						if tipo == 'SAP flux':
+							tit0 = 'Sector ' + str(sec) + ' (' + sauth +')<sub><i>   SAP flux</i></sub>'
 							lc0 = res[idx].download(flux_column='sap_flux').remove_outliers(sigma_lower=20, sigma_upper=3).normalize().remove_nans()
 						else:
 							lc0 = res[idx].download().remove_outliers(sigma_lower=20, sigma_upper=3).normalize().remove_nans()
@@ -387,6 +387,7 @@ if __name__ == '__main__':
 						lc0 = res[idx].download(quality_bitmask=1073749231).remove_outliers(sigma_lower=20, sigma_upper=3).normalize().remove_nans()
 					case _:
 						lc0 = res[idx].download(quality_bitmask=1073749231).remove_outliers(sigma_lower=20, sigma_upper=3).normalize().remove_nans()
+				tit = f'  <a href="https://transit-vetting.streamlit.app/?tic={ticid}&sec={sec}">' + tit0 + '</a>'
 			except:
 				st.write(tit0 + ' - :red[Error]')
 				st.write('.')
