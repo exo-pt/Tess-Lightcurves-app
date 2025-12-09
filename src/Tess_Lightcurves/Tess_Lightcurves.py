@@ -389,13 +389,13 @@ if __name__ == '__main__':
 						lc0 = res[idx].download(quality_bitmask=1073749231).remove_outliers(sigma_lower=20, sigma_upper=3).normalize().remove_nans()
 				tit = f'  <a href="https://transit-vetting.streamlit.app/?tic={ticid}&sec={sec}">' + tit0 + '</a>'
 			except:
-				st.write(tit0 + ' - :red[Error]')
+				st.write('Sector ' + str(sec) + ' (' + sauth + ') - :red[Error]')
 				st.write('.')
 				continue  
 			try:
 			    df = lc0.to_pandas().reset_index()
 			except:
-				st.write(tit0 + ' - :red[Error]')
+				st.write('Sector ' + str(sec) + ' (' + sauth + ') - :red[Error]')
 				st.write('.')
 				continue              
 			df = df[['time', 'flux']]
