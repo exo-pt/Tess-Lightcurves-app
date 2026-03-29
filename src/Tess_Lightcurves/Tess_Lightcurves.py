@@ -112,7 +112,7 @@ def get_splash_text(mom_date):
 def plot(df, dumps, tit):
 	fig = px.scatter(df, x='time', y='flux', color_discrete_sequence=['darkslategrey']) #, render_mode="SVG")
 	fig.update_traces(marker={'size': 3.3})
-	fig.update_layout(yaxis = dict(fixedrange = True))
+	#fig.update_layout(yaxis = dict(fixedrange = True))
 	minx = min(df['time']) - 0.7
 	maxx = max(df['time']) + 0.7
 	fig.update_xaxes(range=[minx-0.05, maxx+0.05])
@@ -225,6 +225,20 @@ def load_mdumps():
 		if len(mdumps):
 			st.session_state.mdumps = mdumps
 	return mdumps
+
+def safe_normalize(lc, target_median=1000):
+	"""
+	Normalizes a light curve while handling zero/negative medians.
+	"""
+	lc_clean = lc.copy()
+
+	current_median = np.nanmedian(lc_clean.flux)
+
+	if current_median.value <= 0:
+		unit = current_median.unit
+		shift_amount = current_median - (target_median * unit)
+		lc_clean.flux = lc_clean.flux - shift_amount
+	return lc_clean.normalize()
 
 def check_mp():
 	if 'linha' not in st.session_state:
@@ -380,13 +394,14 @@ if __name__ == '__main__':
 					case 'SPOC' | 'TESS-SPOC':
 						if tipo == 'SAP flux':
 							tit0 = 'Sector ' + str(sec) + ' (' + sauth +')<sub><i>   SAP flux</i></sub>'
-							lc0 = res[idx].download(flux_column='sap_flux').remove_outliers(sigma_lower=20, sigma_upper=3).normalize().remove_nans()
+							lc0 = res[idx].download(flux_column='sap_flux').remove_outliers(sigma_lower=20, sigma_upper=3).remove_nans()
 						else:
-							lc0 = res[idx].download().remove_outliers(sigma_lower=20, sigma_upper=3).normalize().remove_nans()
+							lc0 = res[idx].download().remove_outliers(sigma_lower=20, sigma_upper=3).remove_nans()
 					case 'QLP':
-						lc0 = res[idx].download(quality_bitmask=1073749231).remove_outliers(sigma_lower=20, sigma_upper=3).normalize().remove_nans()
+						lc0 = res[idx].download(quality_bitmask=1073749231).remove_outliers(sigma_lower=20, sigma_upper=3).remove_nans()
 					case _:
-						lc0 = res[idx].download(quality_bitmask=1073749231).remove_outliers(sigma_lower=20, sigma_upper=3).normalize().remove_nans()
+						lc0 = res[idx].download(quality_bitmask=1073749231).remove_outliers(sigma_lower=20, sigma_upper=3).remove_nans()
+				lc0 = safe_normalize(lc0)
 				tit = f'  <a href="https://transit-vetting.streamlit.app/?tic={ticid}&sec={sec}">' + tit0 + '</a>'
 			except:
 				st.write('Sector ' + str(sec) + ' (' + sauth + ') - :red[Error]')
