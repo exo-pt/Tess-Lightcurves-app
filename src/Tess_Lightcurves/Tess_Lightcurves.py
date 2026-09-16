@@ -28,11 +28,11 @@ def set_css():
 				font-size: 13px;
 				padding-bottom: 1rem;
 			}
-            .vspc2{
-                font-size: 13px;
-                text-align: center;
-                padding-bottom: 1.4rem;
-            }
+			.vspc2{
+				font-size: 13px;
+				text-align: center;
+				padding-bottom: 1.4rem;
+			}
 			.stFormSubmitButton button{
 				float:right;
 				color: navy;
@@ -93,7 +93,7 @@ def set_css():
 			}
 			.js-plotly-plot .plotly svg a {
 				fill: #000;
-			}            
+			}
 		</style>
 		""", unsafe_allow_html=True)
 
@@ -101,7 +101,8 @@ def get_splash_text(mom_date):
 	html = """
 		<p class="splash">&#8226;&nbsp;&nbsp;For the selected TIC number, the lightcurve of each sector available on MAST, is displayed.</p>
 		<p class="splash">&#8226;&nbsp;&nbsp;If  more than one author is available for a single sector, the displayed lightcurve, in availability order, is:<br/>
-		&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; SPOC (2 min) -> TESS-SPOC -> QLP -> ELEANOR.</p>
+		&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; SPOC (2 min) -> TESS-SPOC -> QLP -> ELEANOR -> TESScut.<br/>
+		&nbsp;&nbsp;&nbsp;Lightcurves obtained from the TESScuts are presented background subtracted. </p>
 		<p class="splash">&#8226;&nbsp;&nbsp;It's possible to choose between PDCSAP and SAP flux (in SPOC and TESS-SPOC), and interact with the plots.</p>
 		<p class="splash">&#8226;&nbsp;&nbsp;Vertical red bars in the lightcurves mark the spacecraft momentum dumps. (<b>Last: {mdate}</b>)
 		</p>
@@ -150,7 +151,6 @@ def plot(df, dumps, tit):
 @st.cache_data(max_entries=150, show_spinner=False)
 def get_catalog(TICstr):
 	cat=[]
-	res=''
 	try:
 		cat = Catalogs.query_object(TICstr, radius=0.0003, catalog="TIC")
 		cat['rad'] = cat['rad'].round(3)
@@ -182,11 +182,58 @@ def get_search_result(TICstr):
 	with ph2:
 		st.html('<div class="spc"><i>Retrieving available sectors...</i></div>')
 	try:
-		res=lk.search_lightcurve(TICstr, mission='TESS')
+		res1=lk.search_lightcurve(TICstr, mission='TESS')
 	except:
-		res = ''
+		res1 = ''
 	ph2.empty()
-	return res
+	return res1
+
+@st.cache_data(ttl='1d', show_spinner=False)
+def get_tesscut_result(TICstr):
+	ph2 = st.empty()
+	with ph2:
+		st.html('<div class="spc"><i>Retrieving available FFI sectors...</i></div>')
+	try:
+		res2=lk.search_tesscut(TICstr)
+	except:
+		res2 = ''
+	ph2.empty()
+	return res2
+
+def aperture_phot(image,aperture):
+	flux = np.sum(image[aperture == 1])
+	return flux
+
+def get_corrected_tpf(tpf):
+	# based on:
+	# https://spacetelescope.github.io/notebooks/notebooks/MAST/TESS/interm_tesscut_astroquery/interm_tesscut_astroquery.html
+	bg_mask = ~tpf.create_threshold_mask(threshold=0.001, reference_pixel=None)
+	tot_bg_pixels = bg_mask.sum()
+	bg_flux = np.array(list(map(lambda x: aperture_phot(x, bg_mask), tpf.hdu[1].data['FLUX']))) / tot_bg_pixels
+	bckg = np.repeat(bg_flux[:, np.newaxis, np.newaxis], 11, axis=1)
+	bckg = np.repeat(bckg, 11, axis=2)
+	tpf.hdu[1].data['FLUX_BKG'] = bckg
+	tpf.hdu[1].data['FLUX'] -= bckg
+	mask = get_target_mask(tpf)
+	tpf.hdu[2].data[mask] = 2
+	return tpf
+
+def get_target_mask(tpf):
+	# get a 3x3 mask around the target
+	pix_x, pix_y = tpf.wcs.all_world2pix([(tpf.ra, tpf.dec)], 0)[0]
+	xx, yy = int(pix_x + 0.5), int(pix_y + 0.5)
+	data = tpf.flux[0]
+	mask = np.full(data.shape, False)
+	if yy < 1:
+		yy = 1
+	if xx < 1:
+		xx = 1
+	if yy > (data.shape[0] - 2):
+		yy = data.shape[0] - 2
+	if xx > (data.shape[1] - 2):
+		xx = data.shape[1] - 2
+	mask[yy - 1 : yy + 2, xx - 1 : xx + 2] = True
+	return mask
 
 def get_line(TICstr):
 	ph = st.empty()
@@ -319,30 +366,45 @@ if __name__ == '__main__':
 			process = mp.Process(target=get_catalog_mp, args=(slist, TICstr,))
 			process.start()
 		#
-		res = get_search_result(TICstr)
+		res1 = get_search_result(TICstr)
 		#
-		if len(res) == 0:
-			get_search_result.clear(TICstr)
-			if res=='':
+		if len(res1) == 0:
+			df1 = pd.DataFrame()
+			if res1=='':
 				st.error('Error in lk.search_lightcurve... Try again.')
+				exit_mp()
+				st.stop()
+			get_search_result.clear(TICstr)
+		else:
+			df1 = res1.table.to_pandas()
+		res2 = get_tesscut_result(TICstr)
+		if len(res2) == 0:
+			df2 = pd.DataFrame()
+			get_search_tesscut.clear(TICstr)
+			if res2=='':
+				st.error('Error in lk.search_tesscut... Try again.')
+				exit_mp()
+				st.stop()
 			else:
-				st.error('No available lightcurve data at MAST from SPOC, TESS_SPOC, QLP or ELEANOR.')
-			exit_mp()
-			st.stop()
-
-		df = res.table.to_pandas()
-		authors = ['SPOC', 'TESS-SPOC', 'QLP', 'GSFC-ELEANOR-LITE']
+				if len(res1) == 0:
+					st.error('No available lightcurves from SPOC, TESS_SPOC, QLP, ELEANOR or TESScut.')
+					exit_mp()
+					st.stop()
+		else:
+			df2 = res2.table.to_pandas()
+		df = pd.concat([df1, df2], ignore_index=False)
+		authors = ['SPOC', 'TESS-SPOC', 'QLP', 'GSFC-ELEANOR-LITE', 'TESScut']
 		sectors = df[(df['author'].isin(authors)) & (df['exptime'] > 100)]['sequence_number'].drop_duplicates().sort_values().to_list()
 		if sectors == []:
 			get_search_result.clear(TICstr)
-			st.error('No available lightcurve data at MAST from SPOC, TESS_SPOC, QLP or ELEANOR.')
+			st.error('No available lightcurve data from SPOC, TESS_SPOC, QLP, ELEANOR or TESScut.')
 			exit_mp()
 			st.stop()
 		#
 		d = {}
-		secs_auth = {0:[], 1:[], 2:[], 3:[]}
+		secs_auth = {0:[], 1:[], 2:[], 3:[], 4:[]}
 		for s in sectors:
-			for auth in range(4):
+			for auth in range(5):
 				idx = df.index[(df['sequence_number'] == s) & (df['author']==authors[auth]) & (df['exptime'] > 100)]
 				if len(idx):
 					secs_auth[auth].append(s)
@@ -354,7 +416,8 @@ if __name__ == '__main__':
 			table = '<table><tr><td>SPOC: </td><td>'+ str(secs_auth[0]) + '</td></tr>' +\
 				'<tr><td>TESS-SPOC: </td><td>'+ str(secs_auth[1]) + '</td></tr>' +\
 				'<tr><td>QLP: </td><td>'+ str(secs_auth[2]) + '</td></tr>' +\
-				'<tr><td>ELEANOR: </td><td>'+ str(secs_auth[3]) + '</td></tr></table>'
+				'<tr><td>ELEANOR: </td><td>'+ str(secs_auth[3]) + '</td></tr>' +\
+				'<tr><td>TESScut: </td><td>'+ str(secs_auth[4]) + '</td></tr></table>'
 			st.html(table)
 		maxlen = 8
 		revsectors = sectors.reverse()
@@ -394,25 +457,33 @@ if __name__ == '__main__':
 					case 'SPOC' | 'TESS-SPOC':
 						if tipo == 'SAP flux':
 							tit0 = 'Sector ' + str(sec) + ' (' + sauth +')<sub><i>   SAP flux</i></sub>'
-							lc0 = res[idx].download(flux_column='sap_flux').remove_outliers(sigma_lower=20, sigma_upper=3).remove_nans()
+							lc0 = res1[idx].download(flux_column='sap_flux').remove_outliers(sigma_lower=20, sigma_upper=3).remove_nans()
 						else:
-							lc0 = res[idx].download().remove_outliers(sigma_lower=20, sigma_upper=3).remove_nans()
+							lc0 = res1[idx].download().remove_outliers(sigma_lower=20, sigma_upper=3).remove_nans()
 					case 'QLP':
-						lc0 = res[idx].download(quality_bitmask=1073749231).remove_outliers(sigma_lower=20, sigma_upper=3).remove_nans()
+						lc0 = res1[idx].download(quality_bitmask=1073749231).remove_outliers(sigma_lower=20, sigma_upper=3).remove_nans()
+					case 'TESScut':
+						tesscut = res2[idx].download(cutout_size=11, quality_bitmask=1073749231)
+						#except:
+						#st.error('Error downloading Tesscut. Try again...')
+						#st.stop()
+						tpf = get_corrected_tpf(tesscut)
+						lc0 = tpf.to_lightcurve()
+						lc0 = lc0.remove_outliers(sigma_lower=20, sigma_upper=3).remove_nans()
 					case _:
-						lc0 = res[idx].download(quality_bitmask=1073749231).remove_outliers(sigma_lower=20, sigma_upper=3).remove_nans()
+						lc0 = res1[idx].download(quality_bitmask=1073749231).remove_outliers(sigma_lower=20, sigma_upper=3).remove_nans()
 				lc0 = safe_normalize(lc0)
 				tit = f'  <a href="https://transit-vetting.streamlit.app/?tic={ticid}&sec={sec}">' + tit0 + '</a>'
 			except:
 				st.write('Sector ' + str(sec) + ' (' + sauth + ') - :red[Error]')
 				st.write('.')
-				continue  
+				continue
 			try:
-			    df = lc0.to_pandas().reset_index()
+				df = lc0.to_pandas().reset_index()
 			except:
 				st.write('Sector ' + str(sec) + ' (' + sauth + ') - :red[Error]')
 				st.write('.')
-				continue              
+				continue
 			df = df[['time', 'flux']]
 			ini = min(lc0.time.value)
 			fim = max(lc0.time.value)
