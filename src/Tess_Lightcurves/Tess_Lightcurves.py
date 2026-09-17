@@ -380,7 +380,7 @@ if __name__ == '__main__':
 		res2 = get_tesscut_result(TICstr)
 		if len(res2) == 0:
 			df2 = pd.DataFrame()
-			get_search_tesscut.clear(TICstr)
+			get_tesscut_result.clear(TICstr)
 			if res2=='':
 				st.error('Error in lk.search_tesscut... Try again.')
 				exit_mp()
