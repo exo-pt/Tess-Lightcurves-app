@@ -18,6 +18,10 @@ def set_css():
 				font-size: 13px;
 				padding-bottom: 0.2rem;
 			}
+			.spc1{
+				font-size: 8px;
+				padding-bottom: 0.1rem;
+			}
 			.splash {
 				font-size: 0.85rem;
 				padding: 0;
@@ -102,7 +106,8 @@ def get_splash_text(mom_date):
 		<p class="splash">&#8226;&nbsp;&nbsp;For the selected TIC number, the lightcurve of each sector available on MAST, is displayed.</p>
 		<p class="splash">&#8226;&nbsp;&nbsp;If  more than one author is available for a single sector, the displayed lightcurve, in availability order, is:<br/>
 		&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; SPOC (2 min) -> TESS-SPOC -> QLP -> ELEANOR -> TESScut.<br/>
-		&nbsp;&nbsp;&nbsp;Lightcurves obtained from the TESScuts are presented background subtracted. </p>
+		&nbsp;&nbsp;&nbsp;Lightcurves obtained from the TESScuts are presented background subtracted.<br/>
+		&nbsp;&nbsp;&nbsp;Option "include FFI TESScuts" must be checked to view them.</p>
 		<p class="splash">&#8226;&nbsp;&nbsp;It's possible to choose between PDCSAP and SAP flux (in SPOC and TESS-SPOC), and interact with the plots.</p>
 		<p class="splash">&#8226;&nbsp;&nbsp;Vertical red bars in the lightcurves mark the spacecraft momentum dumps. (<b>Last: {mdate}</b>)
 		</p>
@@ -176,7 +181,7 @@ def get_catalog_mp(slist, TICstr):
 	linha = get_catalog(TICstr)
 	slist.append(linha)
 
-@st.cache_data(ttl='1d', show_spinner=False)
+@st.cache_data(ttl='1D', show_spinner=False)
 def get_search_result(TICstr):
 	ph2 = st.empty()
 	with ph2:
@@ -188,7 +193,7 @@ def get_search_result(TICstr):
 	ph2.empty()
 	return res1
 
-@st.cache_data(ttl='1d', show_spinner=False)
+@st.cache_data(ttl='1D', show_spinner=False)
 def get_tesscut_result(TICstr):
 	ph2 = st.empty()
 	with ph2:
@@ -257,7 +262,7 @@ def get_line(TICstr):
 					st.html('<div class="spc">&nbsp;</i></div>')
 	return ph
 
-@st.cache_resource(ttl='1d')
+@st.cache_resource(ttl='1D')
 def load_mdumps():
 	if 'mdumps' in st.session_state:
 		mdumps = st.session_state.mdumps
@@ -330,11 +335,17 @@ if __name__ == '__main__':
 					ticid = int(tic)
 				except ValueError:
 					ticid=0
-			st.html('&nbsp;')
+			st.html('<div class="spc1">&nbsp;</div>')
 			tipo = st.selectbox(
 				'**Flux type** (spoc/tess-spoc):',
 				('PDCSAP flux', 'SAP flux')
 			)
+			st.html('<div class="spc1">&nbsp;</div>')
+			try:
+				x = st.query_params.tcut #  ?tic=165795955
+				tcut = st.checkbox("include **FFI TESScuts**", value=True)
+			except:
+				tcut = st.checkbox("include **FFI TESScuts**")
 			st.html('<div class="credits">&nbsp;</div>')
 			st.form_submit_button('**PLOT**')
 		st.html('<div align="right">v'+__version__+'</div>')
@@ -370,29 +381,37 @@ if __name__ == '__main__':
 		#
 		if len(res1) == 0:
 			df1 = pd.DataFrame()
+			get_search_result.clear(TICstr)
 			if res1=='':
 				st.error('Error in lk.search_lightcurve... Try again.')
 				exit_mp()
 				st.stop()
-			get_search_result.clear(TICstr)
-		else:
-			df1 = res1.table.to_pandas()
-		res2 = get_tesscut_result(TICstr)
-		if len(res2) == 0:
-			df2 = pd.DataFrame()
-			get_tesscut_result.clear(TICstr)
-			if res2=='':
-				st.error('Error in lk.search_tesscut... Try again.')
-				exit_mp()
-				st.stop()
 			else:
-				if len(res1) == 0:
-					st.error('No available lightcurves from SPOC, TESS_SPOC, QLP, ELEANOR or TESScut.')
+				if not tcut:
+					st.error('No available lightcurves from SPOC, TESS_SPOC, QLP, or ELEANOR.')
 					exit_mp()
 					st.stop()
 		else:
-			df2 = res2.table.to_pandas()
-		df = pd.concat([df1, df2], ignore_index=False)
+			df1 = res1.table.to_pandas()
+		if tcut:
+			res2 = get_tesscut_result(TICstr)
+			if len(res2) == 0:
+				df2 = pd.DataFrame()
+				get_tesscut_result.clear(TICstr)
+				if res2=='':
+					st.error('Error in lk.search_tesscut... Try again.')
+					exit_mp()
+					st.stop()
+				else:
+					if len(res1) == 0:
+						st.error('No available lightcurves from SPOC, TESS_SPOC, QLP, ELEANOR or TESScut.')
+						exit_mp()
+						st.stop()
+			else:
+				df2 = res2.table.to_pandas()
+			df = pd.concat([df1, df2], ignore_index=False)
+		else:
+			df = df1
 		authors = ['SPOC', 'TESS-SPOC', 'QLP', 'GSFC-ELEANOR-LITE', 'TESScut']
 		sectors = df[(df['author'].isin(authors)) & (df['exptime'] > 100)]['sequence_number'].drop_duplicates().sort_values().to_list()
 		if sectors == []:
@@ -410,14 +429,19 @@ if __name__ == '__main__':
 					secs_auth[auth].append(s)
 					if s not in d:
 						d[s] = [idx[0], auth]
-
-		txt = '**Available Sectors: ' + str(sectors) + '**'
+		if tcut:
+			txt = '**Available Sectors** (all): **' + str(sectors) + '**'
+		else:
+			txt = '**Available Sectors** (w/o FFIs): **' + str(sectors) + '**'
 		with st.expander(txt):
 			table = '<table><tr><td>SPOC: </td><td>'+ str(secs_auth[0]) + '</td></tr>' +\
 				'<tr><td>TESS-SPOC: </td><td>'+ str(secs_auth[1]) + '</td></tr>' +\
 				'<tr><td>QLP: </td><td>'+ str(secs_auth[2]) + '</td></tr>' +\
-				'<tr><td>ELEANOR: </td><td>'+ str(secs_auth[3]) + '</td></tr>' +\
-				'<tr><td>TESScut: </td><td>'+ str(secs_auth[4]) + '</td></tr></table>'
+				'<tr><td>ELEANOR: </td><td>'+ str(secs_auth[3]) + '</td></tr>'
+			if tcut:
+				table += '<tr><td>TESScut: </td><td>'+ str(secs_auth[4]) + '</td></tr></table>'
+			else:
+				table += '</table>'
 			st.html(table)
 		maxlen = 8
 		revsectors = sectors.reverse()
