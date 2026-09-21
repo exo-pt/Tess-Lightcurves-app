@@ -11,8 +11,8 @@ The app will open in the default browser
 
 For a selected TIC number, the lightcurve of each sector available on MAST, is displayed.
 If  more than one author is available for a single sector, the displayed lightcurve, in availability order, is:
-&nbsp;&nbsp; SPOC (2 min) -> TESS-SPOC -> QLP -> ELEANOR.<br/>
-Since version 2, for sectors only available in Full Frame Images, a lightcurve is displayed after extracting an 11x11 TESScut from the FFI, converting it and performing a basic background subtraction.
+&nbsp;&nbsp; SPOC (2 min) -> TESS-SPOC -> QLP -> ELEANOR -> TESScut.<br/>
+Since version 2, for sectors only available in Full Frame Images, a lightcurve is displayed after extracting an 11x11 TESScut from the FFI, converting it and performing a basic background subtraction. *(Option "include FFI TESScuts" must be checked)*
 
 The user can choose between PDCSAP and SAP flux (for SPOC and TESS-SPOC), and can interact with the plots (thx to [Plotly](https://github.com/plotly/plotly.py) python library)
 
